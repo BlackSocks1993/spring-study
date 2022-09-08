@@ -1,15 +1,12 @@
 package com.spring.study.user.service;
 
-import static org.hamcrest.CoreMatchers.any;
+import static com.spring.study.user.service.UserServiceImpl.MIN_LOGCOUNT_FOR_SILVER;
+import static com.spring.study.user.service.UserServiceImpl.MIN_RECCOMEND_FOR_GOLD;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static com.spring.study.user.service.UserServiceImpl.MIN_LOGCOUNT_FOR_SILVER;
-import static com.spring.study.user.service.UserServiceImpl.MIN_RECCOMEND_FOR_GOLD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +15,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
+import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mail.MailException;
@@ -39,23 +36,25 @@ import com.spring.study.user.domain.User;
 		"file:src/main/webapp/WEB-INF/spring/appServlet/servlet-context.xml"})
 public class UserServiceTest {
 
+	// 팩토리 빈을 가져오려면 애플리케이션 컨텍스트가 필요하다.
+	@Autowired ApplicationContext context;
 	@Autowired UserService userService;	
 	@Autowired UserDao userDao;
 	@Autowired UserServiceImpl userServiceImpl;
 	@Autowired MailSender mailSender;
 	@Autowired PlatformTransactionManager transactionManager;
-	@Autowired ApplicationContext context;
 
-	List<User> users;	// test fixture
+	// Test fixure
+	List<User> users;
 
 	@Before
 	public void setUp() {
 		users = Arrays.asList(
-				new User("bumjin", "박범진", "p1", "user1@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER-1, 0),
-				new User("joytouch", "강명성", "p2", "user2@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER, 0),
-				new User("erwins", "신승한", "p3", "user3@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD-1),
-				new User("madnite1", "이상호", "p4", "user4@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD),
-				new User("green", "오민규", "p5", "user5@ksug.org", Level.GOLD, 100, Integer.MAX_VALUE)
+				new User("admin01", "김광혁", "p1", "admin1@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER-1, 0),
+				new User("admin02", "김정혁", "p2", "admin2@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER, 0),
+				new User("user01", "임지선", "p3", "user1@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD-1),
+				new User("user02", "임혁준", "p4", "user2@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD),
+				new User("user03", "오민규", "p5", "user3@ksug.org", Level.GOLD, 100, 2500)
 		);
 	}
 
@@ -73,8 +72,8 @@ public class UserServiceTest {
 
 		List<User> updated = mockUserDao.getUpdated();  
 		assertThat(updated.size(), is(2));  
-		checkUserAndLevel(updated.get(0), "joytouch", Level.SILVER); 
-		checkUserAndLevel(updated.get(1), "madnite1", Level.GOLD);
+		checkUserAndLevel(updated.get(0), "admin02", Level.SILVER); 
+		checkUserAndLevel(updated.get(1), "user02", Level.GOLD);
 
 		List<String> request = mockMailSender.getRequests();
 		assertThat(request.size(), is(2));
@@ -120,10 +119,12 @@ public class UserServiceTest {
 			return requests;
 		}
 
+		@Override
 		public void send(SimpleMailMessage mailMessage) throws MailException {
 			requests.add(mailMessage.getTo()[0]);  
 		}
 
+		@Override
 		public void send(SimpleMailMessage[] mailMessage) throws MailException {
 		}
 	}
@@ -168,12 +169,13 @@ public class UserServiceTest {
 	@Test 
 	public void add() {
 		userDao.deleteAll();
-		
-		User userWithLevel = users.get(4);	  // GOLD 레벨  
-		User userWithoutLevel = users.get(0);  
+
+		// GOLD 레벨
+		User userWithLevel = users.get(4);
+		User userWithoutLevel = users.get(0);
 		userWithoutLevel.setLevel(null);
 
-		userService.add(userWithLevel);	  
+		userService.add(userWithLevel);
 		userService.add(userWithoutLevel);
 
 		User userWithLevelRead = userDao.get(userWithLevel.getId());
@@ -183,26 +185,31 @@ public class UserServiceTest {
 		assertThat(userWithoutLevelRead.getLevel(), is(Level.BASIC));
 	}
 
+		  // 다이내믹 프록시 팩토리 빈을 직접 만들어 사용할 때는 없앴다가 다시 등장한 컨텍스트 무효화 애노테이션
 	@Test @DirtiesContext
 	public void upgradeAllOrNothing() throws Exception {
 		TestUserService testUserService = new TestUserService(users.get(3).getId());
 		testUserService.setUserDao(userDao);
 		testUserService.setMailSender(mailSender);
 
-		TxProxyFactoryBean txProxyFactoryBean = 
-			context.getBean("&userService", TxProxyFactoryBean.class);
+		/*
+		 * 팩토리 빈 자체를 가져와야 하므로 빈 이름에 &를 반드시 넣어야 한다.
+		 * 테스트용 타깃 주입.
+		 */
+		ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
 		txProxyFactoryBean.setTarget(testUserService);
+		// 변경된 타깃 설정을 이용해서 트랜잭션 다이내믹 프록시 오브젝트를 다시 생성한다.
 		UserService txUserService = (UserService) txProxyFactoryBean.getObject();
 
-		userDao.deleteAll();			  
+		userDao.deleteAll();
+
 		for(User user : users) userDao.add(user);
 
 		try {
 			txUserService.upgradeLevels();   
 			fail("TestUserServiceException expected"); 
 		}
-		catch(TestUserServiceException e) { 
-		}
+		catch(TestUserServiceException e) {}
 
 		checkLevelUpgraded(users.get(1), false);
 	}
@@ -216,7 +223,7 @@ public class UserServiceTest {
 
 		protected void upgradeLevel(User user) {
 			if (user.getId().equals(this.id)) throw new TestUserServiceException();  
-			super.upgradeLevel(user);  
+			super.upgradeLevel(user);
 		}
 	}
 

@@ -14,17 +14,41 @@
 		<property name="dataSource" ref="dataSource" />
 	</bean>
 	
+	<!--
 	<bean id="userService" class="com.spring.study.user.service.TxProxyFactoryBean">
 		<property name="target" ref="userServiceImpl" />
-		<property name="transactionManager" ref="transactionManager" />
+		<property name="txManager" ref="txManager" />
 		<property name="pattern" value="upgradeLevels" />
 		<property name="serviceInterface" value="com.spring.study.user.service.UserService" />
 	</bean>
+	-->
 
 	<bean id="userServiceImpl" class="com.spring.study.user.service.UserServiceImpl">
 		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>	
+
+	<bean id="txAdvice" class="com.spring.study.user.service.TxAdvice">
+		<property name="txManager" ref="txManager"></property>
+	</bean>
+
+	<bean id="txPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+		<property name="mappedName" value="upgrade*"></property>
+	</bean>
+
+	<bean id="txAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+		<property name="advice" ref="txAdvice"></property>
+		<property name="pointcut" ref="txPointcut"></property>
+	</bean>
+
+	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="target" ref="userServiceImpl"></property>
+		<property name="interceptorNames">
+			<list>
+				<value>txAdvisor</value>
+			</list>
+		</property>
+	</bean>
 
 	<!-- 
 	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
@@ -34,7 +58,7 @@
 	<bean id="mailSender" class="com.spring.study.user.service.DummyMailSender" />
 		
 	
-	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+	<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />  
 	</bean>
 

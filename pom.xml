@@ -33,6 +33,12 @@
 			<artifactId>spring-webmvc</artifactId>
 			<version>${org.springframework-version}</version>
 		</dependency>
+		<!-- Spring AOP -->
+		<dependency>
+		    <groupId>org.springframework</groupId>
+		    <artifactId>spring-aop</artifactId>
+		    <version>${org.springframework-version}</version>
+		</dependency>		
 		<!-- MailSender -->
 		<dependency>
 		    <groupId>org.springframework</groupId>

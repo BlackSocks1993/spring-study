@@ -38,10 +38,10 @@ public class UserDaoJdbc implements UserDao {
 	@Override
 	public void add(User user) {
 		this.jdbcTemplate.update(
-				" INSERT INTO users(id, name, password, email, level, login, recommend) " +
-				" VALUES(?, ?, ?, ?, ?, ?, ?) "
-				,user.getId(), user.getName(), user.getPassword(), user.getEmail() 
-				,user.getLevel().intValue(), user.getLogin(), user.getRecommend()
+				"INSERT INTO users(id, name, password, level, login, recommend, email) " +
+				"VALUES(?, ?, ?, ?, ?, ?, ?) "
+				,user.getId(), user.getName(), user.getPassword(), user.getLevel().intValue() 
+				,user.getLogin(), user.getRecommend(), user.getEmail() 
 		);
 	}
 
