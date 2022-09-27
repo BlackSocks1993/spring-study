@@ -15,13 +15,11 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -38,9 +36,9 @@ public class UserServiceTest {
 
 	// 팩토리 빈을 가져오려면 애플리케이션 컨텍스트가 필요하다.
 	@Autowired ApplicationContext context;
-	@Autowired UserService userService;	
+	@Autowired UserService userService;
+	@Autowired UserService testUserService;
 	@Autowired UserDao userDao;
-	@Autowired UserServiceImpl userServiceImpl;
 	@Autowired MailSender mailSender;
 	@Autowired PlatformTransactionManager transactionManager;
 
@@ -186,27 +184,28 @@ public class UserServiceTest {
 	}
 
 		  // 다이내믹 프록시 팩토리 빈을 직접 만들어 사용할 때는 없앴다가 다시 등장한 컨텍스트 무효화 애노테이션
-	@Test @DirtiesContext
+	@Test // @DirtiesContext
 	public void upgradeAllOrNothing() throws Exception {
-		TestUserService testUserService = new TestUserService(users.get(3).getId());
-		testUserService.setUserDao(userDao);
-		testUserService.setMailSender(mailSender);
+//		TestUserService testUserService = new TestUserService(users.get(3).getId());
+//		TestUserServiceImpl testUserService = new TestUserServiceImpl();
+//		testUserService.setUserDao(userDao);
+//		testUserService.setMailSender(mailSender);
 
 		/*
 		 * 팩토리 빈 자체를 가져와야 하므로 빈 이름에 &를 반드시 넣어야 한다.
 		 * 테스트용 타깃 주입.
 		 */
-		ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
-		txProxyFactoryBean.setTarget(testUserService);
+//		ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
+//		txProxyFactoryBean.setTarget(testUserService);
 		// 변경된 타깃 설정을 이용해서 트랜잭션 다이내믹 프록시 오브젝트를 다시 생성한다.
-		UserService txUserService = (UserService) txProxyFactoryBean.getObject();
+//		UserService txUserService = (UserService) txProxyFactoryBean.getObject();
 
 		userDao.deleteAll();
 
 		for(User user : users) userDao.add(user);
 
 		try {
-			txUserService.upgradeLevels();   
+			this.testUserService.upgradeLevels();
 			fail("TestUserServiceException expected"); 
 		}
 		catch(TestUserServiceException e) {}
@@ -214,13 +213,17 @@ public class UserServiceTest {
 		checkLevelUpgraded(users.get(1), false);
 	}
 
-	static class TestUserService extends UserServiceImpl {
-		private String id;
+	/*
+	 * 포인트컷의 클래스 필터에 선정되도록 이름을 변경한다.
+	 * 이래서 처음부터 이름을 잘 지어야 한다.
+	 */
+	static class TestUserServiceImpl extends UserServiceImpl {
+		// 테스트 픽스처의 users(3)의 id 값을 고정시켜버렸다.
+		private String id = "user02";
 		
-		private TestUserService(String id) {  
-			this.id = id;
-		}
+//		private TestUserService(String id) { this.id = id; }
 
+		@Override
 		protected void upgradeLevel(User user) {
 			if (user.getId().equals(this.id)) throw new TestUserServiceException();  
 			super.upgradeLevel(user);

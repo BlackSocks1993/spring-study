@@ -2,7 +2,7 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd">
-	
+
 	<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
 		<property name="driverClass" value="org.mariadb.jdbc.Driver" />
 		<property name="url" value="jdbc:mariadb://localhost:3306/spring?characterEncoding=UTF-8" />
@@ -23,31 +23,8 @@
 	</bean>
 	-->
 
-	<bean id="userServiceImpl" class="com.spring.study.user.service.UserServiceImpl">
-		<property name="userDao" ref="userDao" />
-		<property name="mailSender" ref="mailSender" />
-	</bean>	
-
-	<bean id="txAdvice" class="com.spring.study.user.service.TxAdvice">
-		<property name="txManager" ref="txManager"></property>
-	</bean>
-
-	<bean id="txPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
-		<property name="mappedName" value="upgrade*"></property>
-	</bean>
-
-	<bean id="txAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
-		<property name="advice" ref="txAdvice"></property>
-		<property name="pointcut" ref="txPointcut"></property>
-	</bean>
-
-	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
-		<property name="target" ref="userServiceImpl"></property>
-		<property name="interceptorNames">
-			<list>
-				<value>txAdvisor</value>
-			</list>
-		</property>
+	<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />  
 	</bean>
 
 	<!-- 
@@ -56,10 +33,59 @@
 	</bean>
 	 -->
 	<bean id="mailSender" class="com.spring.study.user.service.DummyMailSender" />
-		
-	
-	<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
-		<property name="dataSource" ref="dataSource" />  
+
+	<bean id="userService" class="com.spring.study.user.service.UserServiceImpl">
+		<property name="userDao" ref="userDao" />
+		<property name="mailSender" ref="mailSender" />
 	</bean>
+
+	<!--
+	스태틱 멤버 클래스는 $로 지정한다.
+	프로퍼티 정의를 포함해서 userService빈의 설정을 상속받는다.
+	-->
+	<bean id="testUserService" class="com.spring.study.user.service.UserServiceTest$TestUserServiceImpl" parent="userService" />
+
+	<!--
+	등록된 빈 중에서 Advisor 인터페이스를 구현한 것을 모두 찾는다.
+	그리고 생성되는 모든 빈애 대해 어드바이저의 포인트컷을 적용해보면서 프록시 적용 대상을 선정한다.
+	 -->
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
+
+	<bean id="txAdvice" class="com.spring.study.user.service.TxAdvice">
+		<property name="txManager" ref="txManager" />
+	</bean>
+
+	<!--
+	<bean id="txPointcut" class="com.spring.study.user.service.NameMatchClassMethodPointcut">
+		<property name="mappedClassName" value="*ServiceImpl" />
+		<property name="mappedName" value="upgrade*" />
+	</bean>
+	-->
+
+	<bean id="txPointcut" class="org.springframework.aop.aspectj.AspectJExpressionPointcut">
+		<property name="expression" value="execution(* *..*ServiceImpl.upgrade*(..))"/>
+	</bean>
+
+	<!--
+	<bean id="txPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+		<property name="mappedName" value="upgrade*" />
+	</bean>
+	-->
+
+	<bean id="txAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+		<property name="advice" ref="txAdvice" />
+		<property name="pointcut" ref="txPointcut" />
+	</bean>
+
+	<!--
+	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="target" ref="userServiceImpl" />
+		<property name="interceptorNames">
+			<list>
+				<value>txAdvisor</value>
+			</list>
+		</property>
+	</bean>
+	-->
 
 </beans>

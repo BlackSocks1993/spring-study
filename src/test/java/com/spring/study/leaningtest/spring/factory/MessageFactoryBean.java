@@ -9,6 +9,7 @@ public class MessageFactoryBean implements FactoryBean<Message> {
 	 * 주입된 정보는 오브젝트 생성 중에 사용된다.
 	 */
 	String text;
+
 	public void setText(String text) {
 		this.text = text;
 	}

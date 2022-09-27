@@ -10,57 +10,34 @@ import java.lang.reflect.Proxy;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.junit.Test;
+import org.springframework.aop.ClassFilter;
+import org.springframework.aop.Pointcut;
 import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.aop.support.NameMatchMethodPointcut;
 
+/**
+ * @Since	2022. 9. 9.
+ * @Author	광혁
+ * <PRE>
+ * =========================
+ * @History
+ * Date				Name		DESC
+ * 2022. 9. 9.		광혁			First written
+ * <PRE>
+ */
 public class DynamicProxyTest {
 
-	@Test
-	public void simpleProxy() {
-		Hello hello = new HelloTarget();
-		assertThat(hello.sayHello("BlackSocks"), is("Hello BlackSocks"));
-		assertThat(hello.sayHi("BlackSocks"), is("Hi BlackSocks"));
-		assertThat(hello.sayThankYou("BlackSocks"), is("Thank You BlackSocks"));
-		
-		Hello proxiedHello = (Hello) Proxy.newProxyInstance(
-				getClass().getClassLoader(),				// 동적으로 생성되는 다이내믹 프록시 클래스의 로딩에 사용할 클래스 로더
-				new Class[] {Hello.class},					// 구현할 인터페이스
-				new UppercaseHandler(new HelloTarget())		// 부가기능과 위임 코드를 담은 InvocationHandler
-		);
-		
-//		Hello proxiedHello = new HelloUppercase(new HelloTarget());
-		assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
-		assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
-		assertThat(proxiedHello.sayThankYou("BlackSocks"), is("THANK YOU BLACKSOCKS"));
+	static interface Hello {
+		String sayHello(String name);
+		String sayHi(String name);
+		String sayThankYou(String name);
 	}
 
-	@Test
-	public void proxyFactoryBean() {
-		ProxyFactoryBean pfBean = new ProxyFactoryBean();
-		// 타깃 설정
-		pfBean.setTarget(new HelloTarget());
-		/* 부가기능을 담은 어드바이스를 추가한다.
-		여러 개를 추가할 수도 있다. */
-		pfBean.addAdvice(new UppercaseAdvice());
-
-		// FactoryBean이므로 getObject()로 생성된 프록시를 가져온다.
-		Hello proxiedHello = (Hello) pfBean.getObject();
-
-		assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
-		assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
-		assertThat(proxiedHello.sayThankYou("BlackSocks"), is("THANK YOU BLACKSOCKS"));
-	}
-
-	static class UppercaseAdvice implements MethodInterceptor {
-		@Override
-		public Object invoke(MethodInvocation invocation) throws Throwable {
-			/* 리플렉션의 Method와 달리 메소드 실행 시 타깃 오브젝트를 전달할 필요가 없다.
-			MethodInvocation은 메소드 정보와 함께 타깃 오브젝트를 알고 있기 때문이다. */
-			String ret = (String) invocation.proceed();
-			// 부가기능 적용
-			return ret.toUpperCase();
-		}
+	static class HelloTarget implements Hello {
+		public String sayHello(String name) { return "Hello " + name; }
+		public String sayHi(String name) { return "Hi " + name; }
+		public String sayThankYou(String name) { return "Thank You " + name; }
 	}
 
 	static class HelloUppercase implements Hello {
@@ -101,16 +78,53 @@ public class DynamicProxyTest {
 		}
 	}
 
-	static interface Hello {
-		String sayHello(String name);
-		String sayHi(String name);
-		String sayThankYou(String name);
+	@Test
+	public void simpleProxy() {
+		Hello hello = new HelloTarget();
+		assertThat(hello.sayHello("BlackSocks"), is("Hello BlackSocks"));
+		assertThat(hello.sayHi("BlackSocks"), is("Hi BlackSocks"));
+		assertThat(hello.sayThankYou("BlackSocks"), is("Thank You BlackSocks"));
+		
+		Hello proxiedHello = (Hello) Proxy.newProxyInstance(
+				getClass().getClassLoader(),				// 동적으로 생성되는 다이내믹 프록시 클래스의 로딩에 사용할 클래스 로더
+				new Class[] {Hello.class},					// 구현할 인터페이스
+				new UppercaseHandler(new HelloTarget())		// 부가기능과 위임 코드를 담은 InvocationHandler
+		);
+		
+//		Hello proxiedHello = new HelloUppercase(new HelloTarget());
+		assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
+		assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
+		assertThat(proxiedHello.sayThankYou("BlackSocks"), is("THANK YOU BLACKSOCKS"));
 	}
 
-	static class HelloTarget implements Hello {
-		public String sayHello(String name) { return "Hello " + name; }
-		public String sayHi(String name) { return "Hi " + name; }
-		public String sayThankYou(String name) { return "Thank You " + name; }
+
+
+	static class UppercaseAdvice implements MethodInterceptor {
+		@Override
+		public Object invoke(MethodInvocation invocation) throws Throwable {
+			/* 리플렉션의 Method와 달리 메소드 실행 시 타깃 오브젝트를 전달할 필요가 없다.
+			MethodInvocation은 메소드 정보와 함께 타깃 오브젝트를 알고 있기 때문이다. */
+			String ret = (String) invocation.proceed();
+			// 부가기능 적용
+			return ret.toUpperCase();
+		}
+	}
+
+	@Test
+	public void proxyFactoryBean() {
+		ProxyFactoryBean pfBean = new ProxyFactoryBean();
+		// 타깃 설정
+		pfBean.setTarget(new HelloTarget());
+		/* 부가기능을 담은 어드바이스를 추가한다.
+		여러 개를 추가할 수도 있다. */
+		pfBean.addAdvice(new UppercaseAdvice());
+
+		// FactoryBean이므로 getObject()로 생성된 프록시를 가져온다.
+		Hello proxiedHello = (Hello) pfBean.getObject();
+
+		assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
+		assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
+		assertThat(proxiedHello.sayThankYou("BlackSocks"), is("THANK YOU BLACKSOCKS"));
 	}
 
 	@Test
@@ -131,6 +145,48 @@ public class DynamicProxyTest {
 		assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
 		assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
 		assertThat(proxiedHello.sayThankYou("BlackSocks"), is("Thank You BlackSocks"));
+	}
+
+	private void checkAdviced(Object target, Pointcut pointcut, boolean adviced) {
+		ProxyFactoryBean pfBean = new ProxyFactoryBean();
+		pfBean.setTarget(target);
+		pfBean.addAdvisor(new DefaultPointcutAdvisor(pointcut, new UppercaseAdvice()));
+		Hello proxiedHello = (Hello) pfBean.getObject();
+
+		if (adviced) {
+			assertThat(proxiedHello.sayHello("BlackSocks"), is("HELLO BLACKSOCKS"));
+			assertThat(proxiedHello.sayHi("BlackSocks"), is("HI BLACKSOCKS"));
+			assertThat(proxiedHello.sayThankYou("BlackSocks"), is("Thank You BlackSocks"));
+		} else {
+			assertThat(proxiedHello.sayHello("BlackSocks"), is("Hello BlackSocks"));
+			assertThat(proxiedHello.sayHi("BlackSocks"), is("Hi BlackSocks"));
+			assertThat(proxiedHello.sayThankYou("BlackSocks"), is("Thank You BlackSocks"));
+		}
+	}
+
+	@Test
+	public void classNamePointcutAdvisor() {
+		// 포인트컷 준비
+		NameMatchMethodPointcut classMethodPointcut = new NameMatchMethodPointcut() {
+			public ClassFilter getClassFilter() {
+				return new ClassFilter() {
+					@Override
+					public boolean matches(Class<?> clazz) {
+						return clazz.getSimpleName().startsWith("HelloT");
+					}
+				};
+			};
+		};
+		classMethodPointcut.setMappedName("sayH*");
+
+		// 테스트
+		checkAdviced(new HelloTarget(), classMethodPointcut, true);
+
+		class HelloWorld extends HelloTarget {}
+		checkAdviced(new HelloWorld(), classMethodPointcut, false);
+
+		class HelloT extends HelloTarget {}
+		checkAdviced(new HelloT(), classMethodPointcut, true);
 	}
 
 }
