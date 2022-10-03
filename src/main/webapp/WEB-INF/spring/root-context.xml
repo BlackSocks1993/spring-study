@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- bean 스키마는 디폴트 네임스페이스이므로 접두어 없이 사용할 수 있다. -->
+<!-- aop 스키마는 aop 네임스페이스를 가지므로 접두어를 사용한다. -->
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd">
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+						https://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/aop
+						http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+						http://www.springframework.org/schema/tx
+						http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+						">
 
 	<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
 		<property name="driverClass" value="org.mariadb.jdbc.Driver" />
@@ -51,9 +61,11 @@
 	 -->
 	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
 
+	<!--
 	<bean id="txAdvice" class="com.spring.study.user.service.TxAdvice">
 		<property name="txManager" ref="txManager" />
 	</bean>
+	-->
 
 	<!--
 	<bean id="txPointcut" class="com.spring.study.user.service.NameMatchClassMethodPointcut">
@@ -62,9 +74,11 @@
 	</bean>
 	-->
 
+	<!--
 	<bean id="txPointcut" class="org.springframework.aop.aspectj.AspectJExpressionPointcut">
 		<property name="expression" value="execution(* *..*ServiceImpl.upgrade*(..))"/>
-	</bean>
+	</bean> 
+	-->
 
 	<!--
 	<bean id="txPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
@@ -72,10 +86,44 @@
 	</bean>
 	-->
 
+	<!--
 	<bean id="txAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
 		<property name="advice" ref="txAdvice" />
 		<property name="pointcut" ref="txPointcut" />
 	</bean>
+	-->
+	
+	<!-- AOP 설정을 담는 부모 태그다. 필요에 따라 AspectJAdvisorAutoProxyCreator를 빈으로 등록해준다. -->
+	<!--
+	<aop:config>
+		<aop:pointcut expression="execution(* *..*ServiceImpl.upgrade*(..))" id="txPointcut" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut" />
+	</aop:config>
+	-->
+	<aop:config>
+		<!-- 빈 이름을 사용한 표현식을 갖는 포인트컷과 어드바이저 -->
+		<aop:advisor advice-ref="txAdvice" pointcut="bean(*Service)" />
+	</aop:config>
+
+	<!--
+	이 태그에 의해서 TransactionInterceptor 빈이 등록된다.
+	transaction-manager="트랜잭션 매니저의 빈 아이디가 transactionManager라면 생략 가능 "
+	-->
+	<!--
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="get*" propagation="REQUIRED" read-only="true" timeout="30" />
+			<tx:method name="upgrade*" propagation="REQUIRES_NEW" isolation="SERIALIZABLE" />
+			<tx:method name="*" propagation="REQUIRED" />
+		</tx:attributes>
+	</tx:advice>
+	-->
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="*" />
+		</tx:attributes>
+	</tx:advice>
 
 	<!--
 	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">

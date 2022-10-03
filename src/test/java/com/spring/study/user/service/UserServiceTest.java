@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Before;
@@ -17,6 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
@@ -213,6 +215,14 @@ public class UserServiceTest {
 		checkLevelUpgraded(users.get(1), false);
 	}
 
+	// 예외가 발생하지 않는 이유가 뭘까요??
+	// 일단 어떤 예외가 발생할지 모르니 expected 없이 테스트를 작성한다. 발생 예외가 파악되면 expected를 추가하여 다시 테스트를 진행한다.
+	@Test//(expected = TransientDataAccessResourceException.class)
+	public void readOnlyTxAttribute() {
+		// 트랜잭션 속성이 제대로 적용되었다면 여기서 읽기전용 속성을 위배했기 때문에 예외가 발생해야 한다.
+		this.testUserService.getAll();
+	}
+
 	/*
 	 * 포인트컷의 클래스 필터에 선정되도록 이름을 변경한다.
 	 * 이래서 처음부터 이름을 잘 지어야 한다.
@@ -222,6 +232,17 @@ public class UserServiceTest {
 		private String id = "user02";
 		
 //		private TestUserService(String id) { this.id = id; }
+
+		// 읽기전용 트랜잭션 대상인 get을 오버라이드 한다.
+		@Override
+		public List<User> getAll() {
+			for (User user : super.getAll()) {
+				// 강제로 쓰기 시도를 한다.
+				super.update(user);
+			}
+			// 메소드가 끝나기 전에 예외가 발생해야 하니 리턴 값은 적당히 넣는다.
+			return null;
+		}
 
 		@Override
 		protected void upgradeLevel(User user) {
