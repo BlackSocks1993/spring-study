@@ -57,11 +57,11 @@ public class UserServiceTest {
 	@Before
 	public void setUp() {
 		users = Arrays.asList(
-				new User("admin01", "김광혁", "p1", "admin1@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER-1, 0),
-				new User("admin02", "김정혁", "p2", "admin2@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER, 0),
-				new User("user01", "임지선", "p3", "user1@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD-1),
-				new User("user02", "임혁준", "p4", "user2@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD),
-				new User("user03", "오민규", "p5", "user3@ksug.org", Level.GOLD, 100, 2500)
+				new User("admin01", "Theodore Twombly", "p1", "admin1@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER-1, 0),
+				new User("admin02", "Samantha", "p2", "admin2@ksug.org", Level.BASIC, MIN_LOGCOUNT_FOR_SILVER, 0),
+				new User("user01", "Amy", "p3", "user1@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD-1),
+				new User("user02", "Catherine Klausen", "p4", "user2@ksug.org", Level.SILVER, 60, MIN_RECCOMEND_FOR_GOLD),
+				new User("user03", "Charles", "p5", "user3@ksug.org", Level.GOLD, 100, 2500)
 		);
 	}
 
